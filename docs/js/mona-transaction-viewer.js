@@ -9,7 +9,12 @@ class MonaTransactionViewer {
         this.profiles = await this.register.get()
         return this.makeTerm(json)
              + '<br>'
+             + this.makeBalancePeopleTable(json)
+             /*
              + this.makePayBalanceAmount(json)
+             + '<br>'
+             + this.makePeopleTotalTable(json)
+             */
              + '<br>'
              + this.makePeoplesTable(this.makePayPeoples(json), '支払')
              + '<br>'
@@ -35,6 +40,7 @@ class MonaTransactionViewer {
         //const format = `${date.getFullYear()}-${month}-${date} ${hours}:${minutes}:${seconds}`
         return `<time datetime="${iso}" title="${iso}">${format}</time>`
     }
+    makeBalancePeopleTable(json) { return `<table><tr><td>${this.makePayBalanceAmount(json)}</td><td>${this.makePeopleTotalTable(json)}</td></tr></table>` }
     makePayBalanceAmount(json) {
         const pay = this.calcTotalPay(json)
         console.debug(pay)
@@ -43,6 +49,21 @@ class MonaTransactionViewer {
         const balance = this.calcBalance(received, pay) // received - pay
         console.debug(balance)
         return `<table><tr><th>支払総額</th><td class="num"><span id="total-pay">${pay.toFixed(8)}</span> MONA</td></tr><tr><th>受取総額</th><td class="num"><span id="balance">${received.toFixed(8)}</span> MONA</td></tr><tr><th>残高</th><td class="num"><span id="balance">${balance.toFixed(8)}</span> MONA</td></tr></table>`
+    }
+    makePeopleTotalTable(json) { // 支払人数,受取人数
+        const pays = this.makePayPeoples(json)
+        const receives = this.makeReceivedPeoples(json)
+        //const pays = json.result.filter(r=>this.isPay(r.vout))
+        //const receives = json.result.filter(r=>!this.isPay(r.vout))
+        //const both = new Set([...pays.map(p=>p.address), ...receives.map(r=>r.address)])
+        // 積集合
+        // https://zenn.dev/nananaoto/articles/3c49bcf18017b472b9ff
+        const both = pays.map(p=>p.address).filter((p) => receives.map(r=>r.address).includes(p))
+        return `<table>
+<tr><th>支払人数</th><td class="num"><span id="total-pay-peoples">${pays.length}</span>人</td></tr>
+<tr><th>受取人数</th><td class="num"><span id="total-receive-peoples">${receives.length}</span>人</td></tr>
+<tr><th>両思人数</th><td class="num"><span id="total-pay-receive-peoples">${both.length}</span>人</td></tr>
+</table>`
     }
     makePeoplesTable(results, caption) {
         console.debug(results)
@@ -71,7 +92,7 @@ class MonaTransactionViewer {
     }
     makePayPeoples(json) { return this.makePeoples(json.result.filter(r=>this.isPay(r.vout))) }
     makeReceivedPeoples(json) { return this.makePeoples(json.result.filter(r=>!this.isPay(r.vout))) }
-    makePeoples(results, isPay) {
+    makePeoples(results) {
         const datas = []
         for (const r of results) {
             const addr = r.vout[(this.my == r.vout[0].scriptPubKey.addresses[0]) ? 1 : 0].scriptPubKey.addresses[0]
